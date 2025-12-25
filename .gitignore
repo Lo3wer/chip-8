@@ -1,0 +1,23 @@
+# Build directory
+build/
+cmake_build_debug/
+cmake_build_release/
+
+# IDE
+.vscode/
+.vs/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Dependencies (optional, if vendored)
+# vendored/
+
+# Executables
+*.exe
+*.out
+*.app
