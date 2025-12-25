@@ -1,5 +1,5 @@
 #include <string.h>
-#include <SDL3/SDL.h>
+#include <stdio.h>
 #include "cpu.h"
 
 /* CHIP-8 fontset (0-F) - stored in memory at 0x50-0x9F */
@@ -69,6 +69,40 @@ void cpu_cycle(Cpu *cpu)
             /* 1NNN - Jump to address NNN */
             cpu->pc = NNN;
             break;
+        
+        case 0x2000:
+            /* 2NNN - Call subroutine at NNN */
+            cpu->stack[cpu->sp] = cpu->pc;
+            cpu->sp++;
+            cpu->pc = NNN;
+            break;
+
+        case 0x3000:
+            /* 3XNN - Skip next instruction if VX == NN */
+            if (cpu->V[X] == NN) {
+                cpu->pc += PC_INCREMENT * 2;
+            } else {
+                cpu->pc += PC_INCREMENT;
+            }
+            break;
+
+        case 0x4000:
+            /* 4XNN - Skip next instruction if VX != NN */
+            if (cpu->V[X] != NN) {
+                cpu->pc += PC_INCREMENT * 2;
+            } else {
+                cpu->pc += PC_INCREMENT;
+            }
+            break;
+
+        case 0x5000:
+            /* 5XY0 - Skip next instruction if VX == VY */
+            if (cpu->V[X] == cpu->V[Y]) {
+                cpu->pc += PC_INCREMENT * 2;
+            } else {
+                cpu->pc += PC_INCREMENT;
+            }
+            break;
 
         case 0x6000:
             /* 6XNN - Set register VX to NN */
@@ -80,6 +114,53 @@ void cpu_cycle(Cpu *cpu)
             /* 7XNN - Add NN to register VX (no carry flag) */
             cpu->V[X] += NN;
             cpu->pc += PC_INCREMENT;
+            break;
+
+        case 0x8000:
+            switch (opcode & 0x000F) {
+                case 0x0000:
+                    /* 8XY0 - Set VX = VY */
+                    cpu->V[X] = cpu->V[Y];
+                    break;
+                case 0x0001:
+                    /* 8XY1 - Set VX = VX OR VY */
+                    cpu->V[X] |= cpu->V[Y];
+                    break;
+                case 0x0002:
+                    /* 8XY2 - Set VX = VX AND VY */
+                    cpu->V[X] &= cpu->V[Y];
+                    break;
+                case 0x0003:
+                    /* 8XY3 - Set VX = VX XOR VY */
+                    cpu->V[X] ^= cpu->V[Y];
+                    break;
+                case 0x0004:
+                    /* 8XY4 - Add VY to VX, set VF = carry */
+                    {
+                        uint16_t sum = cpu->V[X] + cpu->V[Y];
+                        cpu->V[0xF] = (sum > 0xFF) ? 1 : 0;
+                        cpu->V[X] = sum & 0xFF;
+                    }
+                    break;
+                case 0x0005:
+                    /* 8XY5 - Subtract VY from VX, set VF = NOT borrow */
+                    cpu->V[0xF] = (cpu->V[X] >= cpu->V[Y]) ? 1 : 0;
+                    cpu->V[X] -= cpu->V[Y];
+                    break;
+                default:
+                    fprintf(stderr, "Unknown opcode: 0x%X at PC: 0x%X\n", opcode, cpu->pc);
+                    break;
+            }
+            cpu->pc += PC_INCREMENT;
+            break;
+
+        case 0x9000:
+            /* 9XY0 - Skip next instruction if VX != VY */
+            if (cpu->V[X] != cpu->V[Y]) {
+                cpu->pc += PC_INCREMENT * 2;
+            } else {
+                cpu->pc += PC_INCREMENT;
+            }
             break;
 
         case 0xA000:
@@ -121,7 +202,7 @@ void cpu_cycle(Cpu *cpu)
             break;
 
         default:
-            SDL_Log("Unknown opcode: 0x%X at PC: 0x%X", opcode, cpu->pc);
+            fprintf(stderr, "Unknown opcode: 0x%X at PC: 0x%X\n", opcode, cpu->pc);
             cpu->pc += PC_INCREMENT;
             break;
     }

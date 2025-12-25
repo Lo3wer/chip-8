@@ -18,3 +18,19 @@ add_executable(chip8 WIN32
 
 # Link to the actual SDL3 library.
 target_link_libraries(chip8 PRIVATE SDL3::SDL3)
+
+# --------------------
+# Unit tests (CPU only)
+# --------------------
+enable_testing()
+
+# Minimal unit test target: uses a stub SDL header/impl to avoid SDL dependency
+add_executable(chip8_tests
+    tests/test_cpu.c
+    cpu.c
+)
+
+# Make headers (cpu.h, display.h) visible and prefer tests/ includes first
+target_include_directories(chip8_tests PRIVATE ${CMAKE_SOURCE_DIR})
+
+add_test(NAME cpu_opcodes COMMAND chip8_tests)
