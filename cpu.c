@@ -31,7 +31,7 @@ bool cpu_init(Cpu *cpu)
     cpu->draw_flag = false;
 
     /* Load fontset into memory at 0x50 */
-    memcpy(&cpu->memory[0x50], fontset, sizeof(fontset));
+    memcpy(&cpu->memory[FONT_LOCATION], fontset, sizeof(fontset));
 
     return true;
 }
@@ -261,13 +261,43 @@ void cpu_cycle(Cpu *cpu)
                     }
                     cpu->pc -= (!key_found) ? PC_INCREMENT : 0;
                     break;
-                
-
+                case 0x0029:
+                    /* FX29 - Sets I to the mem address of the hex character in VX*/
+                    cpu->I = FONT_LOCATION + (cpu->V[X] & 0xF)*5;
+                    break;
+                case 0x0033:
+                    /* FX33 - Sets three decimals at mem address I with VX*/
+                    uint8_t value = cpu->V[X];
+                    if(cpu->I<MEMORY_SIZE-2){
+                        cpu->memory[cpu->I + 2] = value%10;
+                        cpu->memory[cpu->I + 1] = (value/10)%10;
+                        cpu->memory[cpu->I] = value/100;
+                    }
+                    break;
+                case 0x0055:
+                    /* FX55 - Sets the memory I to I + X to registers V0-VX respectively*/
+                    if(cpu->I + X < MEMORY_SIZE){
+                        for(int i = 0; i <= X; i++){
+                            cpu->memory[cpu->I + i] = cpu->V[i];
+                        }
+                        cpu->I += (INDEX_UPDATE) ? X + 1 : 0;
+                    }
+                    break;
+                case 0x0065:
+                    /* FX65 - Reads the memory I to I + X and sets registers V0-VX respectively*/
+                    if(cpu->I + X < MEMORY_SIZE){
+                        for(int i = 0; i <= X; i++){
+                            cpu->V[i] = cpu->memory[cpu->I + i];
+                        }
+                        cpu->I += (INDEX_UPDATE) ? X + 1 : 0;
+                    }
+                    break;
                 default:
                     fprintf(stderr, "Unknown opcode: 0x%X at PC: 0x%X\n", opcode, cpu->pc);
                     break;
             }
-
+            break;
+            
         default:
             fprintf(stderr, "Unknown opcode: 0x%X at PC: 0x%X\n", opcode, cpu->pc);
             break;

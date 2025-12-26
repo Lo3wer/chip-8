@@ -13,7 +13,9 @@
 #define DISPLAY_WIDTH 64
 #define DISPLAY_HEIGHT 32
 #define SHIFT_SWAP 0 // For 0x8XY6 and 0x8XYE opcodes, 1 = use VY, 0 = use VX
+#define INDEX_UPDATE 0 // For 0xFX55 and 0xFX65 it will increment I if 1, otherwise will leave I untouched
 #define DECREMENT_TIMER_MS 1000/60
+#define FONT_LOCATION 0x50
 
 typedef struct {
     uint8_t memory[MEMORY_SIZE];
