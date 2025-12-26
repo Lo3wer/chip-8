@@ -1,183 +1,130 @@
-#include <assert.h>
-#include <string.h>
-#include "cpu.h"
+#include "test_cpu.h"
 
-/* Helpers */
-static void reset_cpu(Cpu *cpu)
-{
-    cpu_init(cpu);
-}
+/* External test declarations */
+/* Display ops */
+extern void test_opcode_00E0_clears_screen(void);
+extern void test_opcode_DXYN_draw_sprite_no_collision(void);
+extern void test_opcode_DXYN_draw_sprite_with_collision(void);
+extern void test_opcode_DXYN_wraps_around_screen(void);
 
-static void test_opcode_6XNN_sets_register()
-{
-    Cpu cpu;
-    reset_cpu(&cpu);
-    cpu.memory[0x200] = 0x6A; /* 6XNN: X=A */
-    cpu.memory[0x201] = 0x42; /* NN=0x42 */
-    cpu_cycle(&cpu);
-    assert(cpu.V[0xA] == 0x42);
-    assert(cpu.pc == 0x202);
-}
+/* Flow control */
+extern void test_opcode_1NNN_jumps(void);
+extern void test_opcode_2NNN_call_and_00EE_return(void);
+extern void test_opcode_BNNN_jump_with_offset(void);
+extern void test_opcode_3XNN_skip_if_equal(void);
+extern void test_opcode_3XNN_no_skip_if_not_equal(void);
+extern void test_opcode_4XNN_skip_if_not_equal(void);
+extern void test_opcode_4XNN_no_skip_if_equal(void);
+extern void test_opcode_5XY0_skip_if_registers_equal(void);
+extern void test_opcode_9XY0_skip_if_registers_not_equal(void);
 
-static void test_opcode_7XNN_adds_to_register()
-{
-    Cpu cpu;
-    reset_cpu(&cpu);
-    cpu.V[0x5] = 0x10;
-    cpu.memory[0x200] = 0x75; /* 7XNN: X=5 */
-    cpu.memory[0x201] = 0x20; /* NN=0x20 */
-    cpu_cycle(&cpu);
-    assert(cpu.V[0x5] == 0x30);
-    assert(cpu.pc == 0x202);
-}
+/* Register ops */
+extern void test_opcode_6XNN_sets_register(void);
+extern void test_opcode_7XNN_adds_to_register(void);
+extern void test_opcode_7XNN_wraps_around(void);
+extern void test_opcode_8XY0_assign(void);
+extern void test_opcode_8XY1_or(void);
+extern void test_opcode_8XY2_and(void);
+extern void test_opcode_8XY3_xor(void);
+extern void test_opcode_8XY4_add_with_carry(void);
+extern void test_opcode_8XY4_add_no_carry(void);
+extern void test_opcode_8XY5_sub_no_borrow(void);
+extern void test_opcode_8XY5_sub_with_borrow(void);
+extern void test_opcode_8XY7_subn_no_borrow(void);
+extern void test_opcode_8XY6_shift_right(void);
+extern void test_opcode_8XYE_shift_left(void);
 
-static void test_opcode_00E0_clears_screen()
-{
-    Cpu cpu;
-    reset_cpu(&cpu);
-    memset(cpu.display, 1, sizeof(cpu.display));
-    cpu.memory[0x200] = 0x00; /* 00E0 */
-    cpu.memory[0x201] = 0xE0;
-    cpu_cycle(&cpu);
-    for (int i = 0; i < DISPLAY_WIDTH * DISPLAY_HEIGHT; i++)
-    {
-        assert(cpu.display[i] == 0);
-    }
-    assert(cpu.draw_flag == true);
-    assert(cpu.pc == 0x202);
-}
+/* Memory ops */
+extern void test_opcode_ANNN_set_index(void);
+extern void test_opcode_FX1E_add_to_index(void);
+extern void test_opcode_FX1E_overflow(void);
+extern void test_opcode_FX29_font_character(void);
+extern void test_opcode_FX33_bcd(void);
+extern void test_opcode_FX33_bcd_edge_cases(void);
+extern void test_opcode_FX55_reg_dump(void);
+extern void test_opcode_FX65_reg_load(void);
 
-static void test_opcode_1NNN_jumps()
-{
-    Cpu cpu;
-    reset_cpu(&cpu);
-    cpu.memory[0x200] = 0x12; /* 1NNN */
-    cpu.memory[0x201] = 0x34; /* NNN=0x234 */
-    cpu_cycle(&cpu);
-    assert(cpu.pc == 0x234);
-}
+/* Timers */
+extern void test_delay_timer_decrements(void);
+extern void test_sound_timer_decrements(void);
+extern void test_timer_doesnt_go_below_zero(void);
+extern void test_opcode_FX07_get_delay_timer(void);
+extern void test_opcode_FX15_set_delay_timer(void);
+extern void test_opcode_FX18_set_sound_timer(void);
 
-static void test_opcode_2NNN_call_and_00EE_return()
-{
-    Cpu cpu;
-    reset_cpu(&cpu);
-    /* Call 0x300 */
-    cpu.memory[0x200] = 0x23; /* 2NNN */
-    cpu.memory[0x201] = 0x00; /* NNN=0x300 */
-    /* At 0x300: Return */
-    cpu.memory[0x300] = 0x00; /* 00EE */
-    cpu.memory[0x301] = 0xEE;
+/* Input */
+extern void test_opcode_EX9E_skip_if_key_pressed(void);
+extern void test_opcode_EX9E_no_skip_if_key_not_pressed(void);
+extern void test_opcode_EXA1_skip_if_key_not_pressed(void);
+extern void test_opcode_FX0A_wait_for_key(void);
 
-    cpu_cycle(&cpu);
-    assert(cpu.pc == 0x300);
-    assert(cpu.sp == 1);
-    assert(cpu.stack[0] == 0x200);
-
-    cpu_cycle(&cpu);
-    assert(cpu.sp == 0);
-    assert(cpu.pc == 0x202); /* back to caller + 2 */
-}
-
-static void test_opcode_DXYN_draw_sprite_no_collision()
-{
-    Cpu cpu;
-    reset_cpu(&cpu);
-    /* Prepare a 1-byte sprite: 0xF0 -> 11110000 */
-    cpu.I = 0x400; /* arbitrary location */
-    cpu.memory[cpu.I] = 0xF0;
-    /* Place sprite at (x=1, y=2) using V1 and V2 */
-    cpu.V[0x1] = 1;
-    cpu.V[0x2] = 2;
-    /* DXYN: D 1 2 1 => draw 1 row from I */
-    cpu.memory[0x200] = 0xD1; /* high nibble D, X=1 */
-    cpu.memory[0x201] = 0x21; /* Y=2, N=1 */
-
-    cpu_cycle(&cpu);
-
-    /* Verify 4 pixels set starting at (1,2): bits 1111 0000 */
-    int y = 2;
-    for (int col = 0; col < 8; col++)
-    {
-        int x = 1 + col;
-        int idx = y * DISPLAY_WIDTH + (x % DISPLAY_WIDTH);
-        int expected = (col < 4) ? 1 : 0;
-        assert(cpu.display[idx] == expected);
-    }
-    assert(cpu.V[0xF] == 0);
-    assert(cpu.draw_flag == true);
-}
-
-static void test_opcode_DXYN_draw_sprite_with_collision()
-{
-    Cpu cpu;
-    reset_cpu(&cpu);
-    /* Prepare sprite */
-    cpu.I = 0x450;
-    cpu.memory[cpu.I] = 0x80; /* 1000 0000 */
-    cpu.V[0x3] = 0;           /* x */
-    cpu.V[0x4] = 0;           /* y */
-
-    /* Pre-set pixel at (0,0) to 1 to trigger collision */
-    cpu.display[0] = 1;
-
-    /* D 3 4 1 */
-    cpu.memory[0x200] = 0xD3;
-    cpu.memory[0x201] = 0x41;
-
-    cpu_cycle(&cpu);
-
-    /* Pixel (0,0) should XOR to 0, collision flag set */
-    assert(cpu.display[0] == 0);
-    assert(cpu.V[0xF] == 1);
-}
-
-static void test_delay_timer_decrements()
-{
-    Cpu cpu;
-    cpu_init(&cpu);
-    cpu.delay_timer = 10;
-    
-    cpu_decrement_timers(&cpu);
-    assert(cpu.delay_timer == 9);
-    
-    cpu_decrement_timers(&cpu);
-    assert(cpu.delay_timer == 8);
-}
-
-static void test_sound_timer_decrements()
-{
-    Cpu cpu;
-    cpu_init(&cpu);
-    cpu.sound_timer = 5;
-    
-    cpu_decrement_timers(&cpu);
-    assert(cpu.sound_timer == 4);
-}
-
-static void test_timer_doesnt_go_below_zero()
-{
-    Cpu cpu;
-    cpu_init(&cpu);
-    cpu.delay_timer = 1;
-    
-    cpu_decrement_timers(&cpu);
-    assert(cpu.delay_timer == 0);
-    
-    cpu_decrement_timers(&cpu);
-    assert(cpu.delay_timer == 0);  // Stays at 0
-}
+/* Random */
+extern void test_opcode_CXNN_random(void);
 
 int main(void)
 {
-    test_opcode_6XNN_sets_register();
-    test_opcode_7XNN_adds_to_register();
-    test_opcode_00E0_clears_screen();
-    test_opcode_1NNN_jumps();
-    test_opcode_2NNN_call_and_00EE_return();
-    test_opcode_DXYN_draw_sprite_no_collision();
-    test_opcode_DXYN_draw_sprite_with_collision();
-    test_delay_timer_decrements();
-    test_sound_timer_decrements();
-    test_timer_doesnt_go_below_zero();
+    printf("=== CHIP-8 CPU Test Suite ===\n\n");
+
+    printf("--- Display Operations ---\n");
+    RUN_TEST(test_opcode_00E0_clears_screen);
+    RUN_TEST(test_opcode_DXYN_draw_sprite_no_collision);
+    RUN_TEST(test_opcode_DXYN_draw_sprite_with_collision);
+    RUN_TEST(test_opcode_DXYN_wraps_around_screen);
+
+    printf("\n--- Flow Control ---\n");
+    RUN_TEST(test_opcode_1NNN_jumps);
+    RUN_TEST(test_opcode_2NNN_call_and_00EE_return);
+    RUN_TEST(test_opcode_BNNN_jump_with_offset);
+    RUN_TEST(test_opcode_3XNN_skip_if_equal);
+    RUN_TEST(test_opcode_3XNN_no_skip_if_not_equal);
+    RUN_TEST(test_opcode_4XNN_skip_if_not_equal);
+    RUN_TEST(test_opcode_4XNN_no_skip_if_equal);
+    RUN_TEST(test_opcode_5XY0_skip_if_registers_equal);
+    RUN_TEST(test_opcode_9XY0_skip_if_registers_not_equal);
+
+    printf("\n--- Register Operations ---\n");
+    RUN_TEST(test_opcode_6XNN_sets_register);
+    RUN_TEST(test_opcode_7XNN_adds_to_register);
+    RUN_TEST(test_opcode_7XNN_wraps_around);
+    RUN_TEST(test_opcode_8XY0_assign);
+    RUN_TEST(test_opcode_8XY1_or);
+    RUN_TEST(test_opcode_8XY2_and);
+    RUN_TEST(test_opcode_8XY3_xor);
+    RUN_TEST(test_opcode_8XY4_add_with_carry);
+    RUN_TEST(test_opcode_8XY4_add_no_carry);
+    RUN_TEST(test_opcode_8XY5_sub_no_borrow);
+    RUN_TEST(test_opcode_8XY5_sub_with_borrow);
+    RUN_TEST(test_opcode_8XY7_subn_no_borrow);
+    RUN_TEST(test_opcode_8XY6_shift_right);
+    RUN_TEST(test_opcode_8XYE_shift_left);
+
+    printf("\n--- Memory Operations ---\n");
+    RUN_TEST(test_opcode_ANNN_set_index);
+    RUN_TEST(test_opcode_FX1E_add_to_index);
+    RUN_TEST(test_opcode_FX1E_overflow);
+    RUN_TEST(test_opcode_FX29_font_character);
+    RUN_TEST(test_opcode_FX33_bcd);
+    RUN_TEST(test_opcode_FX33_bcd_edge_cases);
+    RUN_TEST(test_opcode_FX55_reg_dump);
+    RUN_TEST(test_opcode_FX65_reg_load);
+
+    printf("\n--- Timers ---\n");
+    RUN_TEST(test_delay_timer_decrements);
+    RUN_TEST(test_sound_timer_decrements);
+    RUN_TEST(test_timer_doesnt_go_below_zero);
+    RUN_TEST(test_opcode_FX07_get_delay_timer);
+    RUN_TEST(test_opcode_FX15_set_delay_timer);
+    RUN_TEST(test_opcode_FX18_set_sound_timer);
+
+    printf("\n--- Input Operations ---\n");
+    RUN_TEST(test_opcode_EX9E_skip_if_key_pressed);
+    RUN_TEST(test_opcode_EX9E_no_skip_if_key_not_pressed);
+    RUN_TEST(test_opcode_EXA1_skip_if_key_not_pressed);
+    RUN_TEST(test_opcode_FX0A_wait_for_key);
+
+    printf("\n--- Random ---\n");
+    RUN_TEST(test_opcode_CXNN_random);
+
+    PRINT_RESULTS();
     return 0;
 }

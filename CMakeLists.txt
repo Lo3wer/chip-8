@@ -14,6 +14,7 @@ add_executable(chip8 WIN32
     main.c
     cpu.c
     display.c
+    audio.c
 )
 
 # Link to the actual SDL3 library.
@@ -27,6 +28,13 @@ enable_testing()
 # Minimal unit test target: uses a stub SDL header/impl to avoid SDL dependency
 add_executable(chip8_tests
     tests/test_cpu.c
+    tests/test_display.c
+    tests/test_flow_control.c
+    tests/test_registers.c
+    tests/test_memory.c
+    tests/test_timers.c
+    tests/test_input.c
+    tests/test_random.c
     cpu.c
 )
 

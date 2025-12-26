@@ -51,7 +51,7 @@ void audio_update(Audio *audio, uint8_t sound_timer)
 void audio_cleanup(Audio *audio)
 {
     if (audio->stream) {
-        SDL_CloseAudioStream(audio->stream);
+        SDL_DestroyAudioStream(audio->stream);
     }
     SDL_QuitSubSystem(SDL_INIT_AUDIO);
 }
