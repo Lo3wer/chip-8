@@ -78,7 +78,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
     }
 
     /* Load program from command line argument or default */
-    const char *program = (argc > 1) ? argv[1] : "programs\\Ibmlogo.ch8";
+    const char *program = (argc > 1) ? argv[1] : "C:/Users/TestUser/chip-8/programs/Ibmlogo.ch8";
     if (!load_program(&state->cpu, program))
     {
         SDL_Log("Failed to load program");

@@ -10,12 +10,15 @@ bool display_init(Display *display)
         return false;
     }
 
+    SDL_SetRenderLogicalPresentation(display->renderer, DISPLAY_WIDTH, DISPLAY_HEIGHT, SDL_LOGICAL_PRESENTATION_INTEGER_SCALE);
+
     /* Create texture for rendering the display buffer */
     display->texture = SDL_CreateTexture(display->renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, DISPLAY_WIDTH, DISPLAY_HEIGHT);
     if (!display->texture) {
         SDL_Log("Couldn't create texture: %s", SDL_GetError());
         return false;
     }
+    SDL_SetTextureScaleMode(display->texture, SDL_SCALEMODE_NEAREST);
 
     return true;
 }

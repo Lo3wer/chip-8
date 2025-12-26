@@ -1,5 +1,6 @@
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include "cpu.h"
 
 /* CHIP-8 fontset (0-F) - stored in memory at 0x50-0x9F */
