@@ -48,6 +48,9 @@ void cpu_cycle(Cpu *cpu)
     uint8_t NN = opcode & 0x00FF;
     uint16_t NNN = opcode & 0x0FFF;
 
+    /* Increment program counter*/
+    cpu->pc += PC_INCREMENT;
+
     /* Decode and execute */
     switch (opcode & 0xF000) {
         case 0x0000:
@@ -55,13 +58,14 @@ void cpu_cycle(Cpu *cpu)
                 /* 00E0 - Clear screen */
                 memset(cpu->display, 0, sizeof(cpu->display));
                 cpu->draw_flag = true;
-                cpu->pc += PC_INCREMENT;
             }
             else if (opcode == 0x00EE) {
                 /* 00EE - Return from subroutine */
                 cpu->sp--;
                 cpu->pc = cpu->stack[cpu->sp];
-                cpu->pc += PC_INCREMENT;
+            }
+            else {
+                fprintf(stderr, "Unknown opcode: 0x%X at PC: 0x%X\n", opcode, cpu->pc);
             }
             break;
 
@@ -72,52 +76,38 @@ void cpu_cycle(Cpu *cpu)
         
         case 0x2000:
             /* 2NNN - Call subroutine at NNN */
-            cpu->stack[cpu->sp] = cpu->pc;
+            cpu->stack[cpu->sp] = cpu->pc - PC_INCREMENT;
             cpu->sp++;
             cpu->pc = NNN;
             break;
 
         case 0x3000:
             /* 3XNN - Skip next instruction if VX == NN */
-            if (cpu->V[X] == NN) {
-                cpu->pc += PC_INCREMENT * 2;
-            } else {
-                cpu->pc += PC_INCREMENT;
-            }
+            cpu->pc += (cpu->V[X] == NN) ? PC_INCREMENT : 0;
             break;
 
         case 0x4000:
             /* 4XNN - Skip next instruction if VX != NN */
-            if (cpu->V[X] != NN) {
-                cpu->pc += PC_INCREMENT * 2;
-            } else {
-                cpu->pc += PC_INCREMENT;
-            }
+            cpu->pc += (cpu->V[X] != NN) ? PC_INCREMENT : 0;
             break;
 
         case 0x5000:
             /* 5XY0 - Skip next instruction if VX == VY */
-            if (cpu->V[X] == cpu->V[Y]) {
-                cpu->pc += PC_INCREMENT * 2;
-            } else {
-                cpu->pc += PC_INCREMENT;
-            }
+            cpu->pc += (cpu->V[X] == cpu->V[Y]) ? PC_INCREMENT : 0;
             break;
 
         case 0x6000:
             /* 6XNN - Set register VX to NN */
             cpu->V[X] = NN;
-            cpu->pc += PC_INCREMENT;
             break;
 
         case 0x7000:
             /* 7XNN - Add NN to register VX (no carry flag) */
             cpu->V[X] += NN;
-            cpu->pc += PC_INCREMENT;
             break;
 
         case 0x8000:
-            switch (opcode & 0x000F) {
+            switch (N) {
                 case 0x0000:
                     /* 8XY0 - Set VX = VY */
                     cpu->V[X] = cpu->V[Y];
@@ -172,22 +162,16 @@ void cpu_cycle(Cpu *cpu)
                     fprintf(stderr, "Unknown opcode: 0x%X at PC: 0x%X\n", opcode, cpu->pc);
                     break;
             }
-            cpu->pc += PC_INCREMENT;
             break;
 
         case 0x9000:
             /* 9XY0 - Skip next instruction if VX != VY */
-            if (cpu->V[X] != cpu->V[Y]) {
-                cpu->pc += PC_INCREMENT * 2;
-            } else {
-                cpu->pc += PC_INCREMENT;
-            }
+            cpu->pc += (cpu->V[X] != cpu->V[Y]) ? PC_INCREMENT : 0;
             break;
 
         case 0xA000:
             /* ANNN - Set index register I to NNN */
             cpu->I = NNN;
-            cpu->pc += PC_INCREMENT;
             break;
 
         case 0xB000:
@@ -197,11 +181,8 @@ void cpu_cycle(Cpu *cpu)
         
         case 0xC000:
             /* CXNN - Set VX = random byte AND NN */
-            {
-                uint8_t rand_byte = (uint8_t)(rand() % 256);
-                cpu->V[X] = rand_byte & NN;
-                cpu->pc += PC_INCREMENT;
-            }
+            uint8_t rand_byte = (uint8_t)(rand() % 256);
+            cpu->V[X] = rand_byte & NN;
             break;
 
         case 0xD000:
@@ -232,13 +213,51 @@ void cpu_cycle(Cpu *cpu)
                 }
 
                 cpu->draw_flag = true;
+            }
+            break;
+
+        case 0xE000:
+            if (NN == 0x9E) {
+                /* EX9E - Skip next instruction if key with the value of VX is pressed */
+                cpu->pc += (cpu->keypad[cpu->V[X]] != 0) ? PC_INCREMENT : 0;
+            } else if (NN == 0xA1) {
+                /* EXA1 - Skip next instruction if key with the value of VX is not pressed */
+                cpu->pc += (cpu->keypad[cpu->V[X]] == 0) ? PC_INCREMENT : 0;
+            } else {
+                fprintf(stderr, "Unknown opcode: 0x%X at PC: 0x%X\n", opcode, cpu->pc);
                 cpu->pc += PC_INCREMENT;
             }
             break;
 
+        case 0xF000:
+            switch (NN) {
+                case 0x0007:
+                    /* FX07 - Set VX to delay_timer */
+                    cpu->V[X] = cpu->delay_timer;
+                    break;
+                case 0x0015:
+                    /* FX15 - Set delay_timer to VX*/
+                    cpu->delay_timer = cpu->V[X];
+                    break;
+                case 0x0018:
+                    /* FX18 - Set sound_timer to VX*/
+                    cpu->sound_timer = cpu->V[X];
+                    break;
+
+                case 0x001E:
+                    /* FX1E - Set index register to VX and track overflow with VF*/
+                    cpu->I += cpu->V[X];
+                    cpu->V[0xF] = (cpu->I > 0x0FFF) ? 1 : 0;
+                    cpu->I &= 0x0FFF;
+                    break;
+
+                default:
+                    fprintf(stderr, "Unknown opcode: 0x%X at PC: 0x%X\n", opcode, cpu->pc);
+                    break;
+            }
+
         default:
             fprintf(stderr, "Unknown opcode: 0x%X at PC: 0x%X\n", opcode, cpu->pc);
-            cpu->pc += PC_INCREMENT;
             break;
     }
 }
