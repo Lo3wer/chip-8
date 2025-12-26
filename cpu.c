@@ -76,7 +76,7 @@ void cpu_cycle(Cpu *cpu)
         
         case 0x2000:
             /* 2NNN - Call subroutine at NNN */
-            cpu->stack[cpu->sp] = cpu->pc - PC_INCREMENT;
+            cpu->stack[cpu->sp] = cpu->pc;
             cpu->sp++;
             cpu->pc = NNN;
             break;
