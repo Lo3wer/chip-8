@@ -12,6 +12,7 @@
 #define KEYPAD_SIZE 16
 #define DISPLAY_WIDTH 64
 #define DISPLAY_HEIGHT 32
+#define SHIFT_SWAP 0 // For 0x8XY6 and 0x8XYE opcodes, 1 = use VY, 0 = use VX
 
 typedef struct {
     uint8_t memory[MEMORY_SIZE];

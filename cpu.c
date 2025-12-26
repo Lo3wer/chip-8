@@ -147,6 +147,27 @@ void cpu_cycle(Cpu *cpu)
                     cpu->V[0xF] = (cpu->V[X] >= cpu->V[Y]) ? 1 : 0;
                     cpu->V[X] -= cpu->V[Y];
                     break;
+                case 0x0007:
+                    /* 8XY7 - Set VX = VY - VX, set VF = NOT borrow */
+                    cpu->V[0xF] = (cpu->V[Y] >= cpu->V[X]) ? 1 : 0;
+                    cpu->V[X] = cpu->V[Y] - cpu->V[X];
+                    break;
+                case 0x0006:
+                    /* 8XY6 - Shift VX right by 1, set VF = least significant bit before shift */
+                    if(SHIFT_SWAP){ //Will set VX to VY before shifting if SHIFT_SWAP is set to 1
+                        cpu->V[X] = cpu->V[Y];
+                    }
+                    cpu->V[0xF] = cpu->V[X] & 0x1;
+                    cpu->V[X] >>= 1;
+                    break;
+                case 0x000E:
+                    /* 8XYE - Shift VX left by 1, set VF = most significant bit before shift */
+                    if(SHIFT_SWAP){ //Will set VX to VY before shifting if SHIFT_SWAP is set to 1
+                        cpu->V[X] = cpu->V[Y];
+                    }
+                    cpu->V[0xF] = (cpu->V[X] & 0x80) >> 7;
+                    cpu->V[X] <<= 1;
+                    break;
                 default:
                     fprintf(stderr, "Unknown opcode: 0x%X at PC: 0x%X\n", opcode, cpu->pc);
                     break;
@@ -167,6 +188,20 @@ void cpu_cycle(Cpu *cpu)
             /* ANNN - Set index register I to NNN */
             cpu->I = NNN;
             cpu->pc += PC_INCREMENT;
+            break;
+
+        case 0xB000:
+            /* BNNN - Jump to address NNN + V0 */
+            cpu->pc = NNN + cpu->V[0];
+            break;
+        
+        case 0xC000:
+            /* CXNN - Set VX = random byte AND NN */
+            {
+                uint8_t rand_byte = (uint8_t)(rand() % 256);
+                cpu->V[X] = rand_byte & NN;
+                cpu->pc += PC_INCREMENT;
+            }
             break;
 
         case 0xD000:
