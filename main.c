@@ -4,11 +4,13 @@
 #include <SDL3/SDL_main.h>
 #include "cpu.h"
 #include "display.h"
+#include "audio.h"
 
 typedef struct
 {
     Cpu cpu;
     Display display;
+    Audio audio;
     bool running;
 } Chip8Emulator;
 
@@ -62,6 +64,15 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
     if (!display_init(&state->display))
     {
         SDL_Log("Failed to initialize display");
+        SDL_free(state);
+        return SDL_APP_FAILURE;
+    }
+
+    /* Initialize audio */
+    if (!audio_init(&state->audio))
+    {
+        SDL_Log("Failed to initialize audio");
+        display_cleanup(&state->display);
         SDL_free(state);
         return SDL_APP_FAILURE;
     }
@@ -209,6 +220,7 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event)
 SDL_AppResult SDL_AppIterate(void *appstate)
 {
     Chip8Emulator *state = (Chip8Emulator *)appstate;
+    static Uint64 last_timer_update = 0;
 
     if (!state->running)
     {
@@ -217,6 +229,22 @@ SDL_AppResult SDL_AppIterate(void *appstate)
 
     /* Execute one CPU cycle */
     cpu_cycle(&state->cpu);
+
+    /* Decrement timers at 60 Hz */
+    Uint64 current_time = SDL_GetTicks();
+    if (last_timer_update == 0)
+    {
+        last_timer_update = current_time;
+    }
+    
+    if (current_time - last_timer_update >= DECREMENT_TIMER_MS)
+    {
+        cpu_decrement_timers(&state->cpu);
+        last_timer_update = current_time;
+    }
+
+    /* Update audio based on sound_timer */
+    audio_update(&state->audio, state->cpu.sound_timer);
 
     /* Update display if draw flag is set */
     if (state->cpu.draw_flag)
@@ -238,6 +266,7 @@ void SDL_AppQuit(void *appstate, SDL_AppResult result)
     if (state)
     {
         display_cleanup(&state->display);
+        audio_cleanup(&state->audio);
         SDL_free(state);
     }
 }

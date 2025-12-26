@@ -13,6 +13,7 @@
 #define DISPLAY_WIDTH 64
 #define DISPLAY_HEIGHT 32
 #define SHIFT_SWAP 0 // For 0x8XY6 and 0x8XYE opcodes, 1 = use VY, 0 = use VX
+#define DECREMENT_TIMER_MS 1000/60
 
 typedef struct {
     uint8_t memory[MEMORY_SIZE];
@@ -30,5 +31,6 @@ typedef struct {
 
 bool cpu_init(Cpu *cpu);
 void cpu_cycle(Cpu *cpu);
+void cpu_decrement_timers(Cpu *cpu);
 
 #endif // CPU_H

@@ -131,6 +131,42 @@ static void test_opcode_DXYN_draw_sprite_with_collision()
     assert(cpu.V[0xF] == 1);
 }
 
+static void test_delay_timer_decrements()
+{
+    Cpu cpu;
+    cpu_init(&cpu);
+    cpu.delay_timer = 10;
+    
+    cpu_decrement_timers(&cpu);
+    assert(cpu.delay_timer == 9);
+    
+    cpu_decrement_timers(&cpu);
+    assert(cpu.delay_timer == 8);
+}
+
+static void test_sound_timer_decrements()
+{
+    Cpu cpu;
+    cpu_init(&cpu);
+    cpu.sound_timer = 5;
+    
+    cpu_decrement_timers(&cpu);
+    assert(cpu.sound_timer == 4);
+}
+
+static void test_timer_doesnt_go_below_zero()
+{
+    Cpu cpu;
+    cpu_init(&cpu);
+    cpu.delay_timer = 1;
+    
+    cpu_decrement_timers(&cpu);
+    assert(cpu.delay_timer == 0);
+    
+    cpu_decrement_timers(&cpu);
+    assert(cpu.delay_timer == 0);  // Stays at 0
+}
+
 int main(void)
 {
     test_opcode_6XNN_sets_register();
@@ -140,5 +176,8 @@ int main(void)
     test_opcode_2NNN_call_and_00EE_return();
     test_opcode_DXYN_draw_sprite_no_collision();
     test_opcode_DXYN_draw_sprite_with_collision();
+    test_delay_timer_decrements();
+    test_sound_timer_decrements();
+    test_timer_doesnt_go_below_zero();
     return 0;
 }

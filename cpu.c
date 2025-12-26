@@ -243,13 +243,25 @@ void cpu_cycle(Cpu *cpu)
                     /* FX18 - Set sound_timer to VX*/
                     cpu->sound_timer = cpu->V[X];
                     break;
-
                 case 0x001E:
                     /* FX1E - Set index register to VX and track overflow with VF*/
                     cpu->I += cpu->V[X];
                     cpu->V[0xF] = (cpu->I > 0x0FFF) ? 1 : 0;
                     cpu->I &= 0x0FFF;
                     break;
+                case 0x000A:
+                    /* FX0A - Blocks until certain key is pressed*/
+                    bool key_found = false;
+                    for(int i = 0; i < KEYPAD_SIZE; i++){
+                        if(cpu->keypad[i] != 0){
+                            cpu->V[X] = i;
+                            key_found = true;
+                            break;
+                        }
+                    }
+                    cpu->pc -= (!key_found) ? PC_INCREMENT : 0;
+                    break;
+                
 
                 default:
                     fprintf(stderr, "Unknown opcode: 0x%X at PC: 0x%X\n", opcode, cpu->pc);
@@ -259,5 +271,17 @@ void cpu_cycle(Cpu *cpu)
         default:
             fprintf(stderr, "Unknown opcode: 0x%X at PC: 0x%X\n", opcode, cpu->pc);
             break;
+    }
+}
+
+void cpu_decrement_timers(Cpu *cpu)
+{
+    /* Decrement timers at 60Hz */
+    if (cpu->delay_timer > 0) {
+        cpu->delay_timer--;
+    }
+
+    if (cpu->sound_timer > 0) {
+        cpu->sound_timer--;
     }
 }
