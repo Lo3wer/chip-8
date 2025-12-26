@@ -1,3 +1,5 @@
+## C Chip-8 emulator
+
 Followed specification from Tobias Langhoff's guide (https://tobiasvl.github.io/blog/write-a-chip-8-emulator/) to create fully functional emulator for Chip-8 games. 
 Right now it supports basic functionalities and has configurable values/behaviours for ambiguous instructions.
 Includes comprehensive unit tests for the cpu which includes every possible instruction plus timer behaviours.
