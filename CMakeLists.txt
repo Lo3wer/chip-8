@@ -9,20 +9,20 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>")
 # Make SDL optional - only add if available
 if(EXISTS "${CMAKE_SOURCE_DIR}/vendored/SDL/CMakeLists.txt")
     add_subdirectory(vendored/SDL EXCLUDE_FROM_ALL)
+    
+    # Create your game executable target with all source files
+    add_executable(chip8 WIN32 
+        main.c
+        cpu.c
+        display.c
+        audio.c
+    )
+
+    # Link to the actual SDL3 library.
+    target_link_libraries(chip8 PRIVATE SDL3::SDL3)
 else()
     message(WARNING "SDL not found, building tests only")
 endif()
-
-# Create your game executable target with all source files
-add_executable(chip8 WIN32 
-    main.c
-    cpu.c
-    display.c
-    audio.c
-)
-
-# Link to the actual SDL3 library.
-target_link_libraries(chip8 PRIVATE SDL3::SDL3)
 
 # --------------------
 # Unit tests (CPU only)
