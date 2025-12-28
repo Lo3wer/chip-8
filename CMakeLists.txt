@@ -6,8 +6,12 @@ project(chip8)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>")
 
-# This assumes the SDL source is available in vendored/SDL
-add_subdirectory(vendored/SDL EXCLUDE_FROM_ALL)
+# Make SDL optional - only add if available
+if(EXISTS "${CMAKE_SOURCE_DIR}/vendored/SDL/CMakeLists.txt")
+    add_subdirectory(vendored/SDL EXCLUDE_FROM_ALL)
+else()
+    message(WARNING "SDL not found, building tests only")
+endif()
 
 # Create your game executable target with all source files
 add_executable(chip8 WIN32 
